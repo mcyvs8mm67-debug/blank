@@ -121,7 +121,7 @@ const $=id=>document.getElementById(id);
 const gameRoot=$('game');
 let scene,camera,renderer,composer,controls,clock;
 let player={health:100,score:0,kills:0,wave:1,streak:0,velocity:new THREE.Vector3(),onGround:true,crouch:false,sliding:0, bob:0,damageCooldown:0};
-let world=[],enemies=[],particles=[],tracers=[],barrels=[],allies=[],coverObjects=[],fogVolumes=[];
+let world=[],enemies=[],particles=[],tracers=[],barrels=[],allies=[],coverObjects=[],fogVolumes=[],mapExtras=[];
 let mapId='dock',mode='survival',active=false,paused=false,spawnClock=0,fireClock=0,reloadClock=0,reloading=false,ads=0,shake=0,quality=1,perkMode='none',droneMode=false,droneModel=null,droneOrigin=null,droneTime=0,droneFireClock=0,recoilKick=0,bloomPass=null,containerRibMaterial=null;
 let weaponIndex=0;
 const weapons=[
@@ -129,7 +129,7 @@ const weapons=[
  {name:'M90 PRECISION RIFLE',short:'M90',mag:5,reserve:35,cap:5,damage:100,rate:.82,reload:2.35,spread:.001,recoil:4.8,auto:false},
  {name:'TAC-9 SIDEARM',short:'TAC-9',mag:15,reserve:90,cap:15,damage:38,rate:.23,reload:1.25,spread:.022,recoil:1.35,auto:true}
 ];
-let weaponGroup,muzzle,gunLight,heldShells=[],health=100,enemyCount=0;
+let weaponGroup,muzzle,gunLight,heldShells=[],health=100,enemyCount=0,lastFrameTime=0;
 const raycaster=new THREE.Raycaster();
 const colliders=[];
 const keys={};
@@ -147,7 +147,7 @@ function proceduralMat(base,metal=0,rough=.8){const c=document.createElement('ca
 function box(name,pos,scale,material,collide=true){const m=new THREE.Mesh(new THREE.BoxGeometry(...scale),material);m.name=name;m.position.set(...pos);m.castShadow=true;m.receiveShadow=true;scene.add(m);world.push(m);if(collide)colliders.push(m);if(/barrier|crate|bunker|cover|container|wall/i.test(name))coverObjects.push(m);return m}
 function cylinder(pos,r1,r2,h,material,segments=12){const m=new THREE.Mesh(new THREE.CylinderGeometry(r1,r2,h,segments),material);m.position.set(...pos);m.castShadow=true;m.receiveShadow=true;scene.add(m);world.push(m);colliders.push(m);return m}
 function buildMap(id){
- mapId=id;world.forEach(o=>scene.remove(o));world=[];fogVolumes.forEach(o=>scene.remove(o));fogVolumes=[];coverObjects=[];colliders.length=0;barrels=[];particles.forEach(p=>scene.remove(p.mesh));particles=[];enemies.forEach(e=>scene.remove(e.group));enemies=[];allies.forEach(a=>scene.remove(a.group));allies=[];
+ mapId=id;world.forEach(o=>scene.remove(o));world=[];mapExtras.forEach(o=>scene.remove(o));mapExtras=[];fogVolumes.forEach(o=>scene.remove(o));fogVolumes=[];coverObjects=[];colliders.length=0;barrels=[];particles.forEach(p=>scene.remove(p.mesh));particles=[];enemies.forEach(e=>scene.remove(e.group));enemies=[];allies.forEach(a=>scene.remove(a.group));allies=[];
  const floorM=id==='snow'?proceduralMat('#b7c4cb',.05,.96):id==='neon'?proceduralMat('#101b2a',.48,.48):proceduralMat('#3b464b',.22,.84);
  const ground= new THREE.Mesh(new THREE.PlaneGeometry(180,180),floorM);ground.rotation.x=-Math.PI/2;ground.position.y=-.06;ground.receiveShadow=true;scene.add(ground);world.push(ground);
  const steel=mat(id==='snow'?0x778995:0x35434c,.78,.3),dark=mat(0x111a20,.45,.55),blue=proceduralMat('#174e68',.34,.62),red=proceduralMat('#783027',.28,.66),olive=proceduralMat('#333d2b',.2,.8),concrete=proceduralMat(id==='snow'?'#8599a5':'#596268',.05,.92),glass=mat(0x78bed0,.7,.12),orange=mat(0xff8638,.35,.28,0xff5a19);
@@ -161,7 +161,7 @@ function buildMap(id){
   for(let i=0;i<5;i++){const b=cylinder([-10+i*5,1,-8+(i%2)*4],.36,.36,2,orange);b.userData.explosive=true;barrels.push(b)}
   for(let i=0;i<5;i++)box('crate',[-32+i*16,.65,-35],[3,1.3,3],i%2?olive:steel);
   for(let i=0;i<5;i++){const pane=box('Breakable glass panel',[-16+i*8,4,36.7],[4.5,2.5,.16],glass);pane.userData.glass=true;}
-  for(let i=0;i<6;i++){const l=new THREE.PointLight(0xff934d,2.4,23);l.position.set(-25+i*10,9,24);scene.add(l)}
+  for(let i=0;i<6;i++){const l=new THREE.PointLight(0xff934d,2.4,23);l.position.set(-25+i*10,9,24);scene.add(l);mapExtras.push(l)}
   scene.background=new THREE.Color(0xa7bbc6);scene.fog=new THREE.FogExp2(0x9aabb2,.0043);
  }else if(id==='snow'){
   // Frozen mountain outpost and long firing lanes.
@@ -179,7 +179,7 @@ function buildMap(id){
   for(let i=0;i<7;i++){box('neon pillar',[-30+i*10,4,10],[.55,8,.55],i%2?cyan:pink,false)}
   for(let i=0;i<4;i++){const pad=box('jump pad',[-24+i*16,.12,-32],[5,.25,5],cyan,false);pad.userData.jump=true}
   scene.background=new THREE.Color(0x070e24);scene.fog=new THREE.FogExp2(0x101b3b,.006);
-  const l1=new THREE.PointLight(0x0eabff,12,65);l1.position.set(0,12,0);scene.add(l1);const l2=new THREE.PointLight(0xff22bd,8,45);l2.position.set(-30,8,22);scene.add(l2);
+  const l1=new THREE.PointLight(0x0eabff,12,65);l1.position.set(0,12,0);scene.add(l1);const l2=new THREE.PointLight(0xff22bd,8,45);l2.position.set(-30,8,22);scene.add(l2);mapExtras.push(l1,l2);
  }
  // Perimeter and skyline silhouette.
  box('perimeter north',[0,3,54],[110,6,2],dark);box('perimeter south',[0,3,-54],[110,6,2],dark);box('perimeter west',[-54,3,0],[2,6,110],dark);box('perimeter east',[54,3,0],[2,6,110],dark);
@@ -292,8 +292,8 @@ function updateHUD(){
  const radar=$('radar');radar.querySelectorAll('.rdot').forEach(n=>n.remove());const pos=controls.getObject().position;for(const e of enemies){if(!e.alive)continue;const dx=(e.group.position.x-pos.x)/80, dz=(e.group.position.z-pos.z)/80;const d=document.createElement('i');d.className='rdot';d.style.left=(50+Math.max(-42,Math.min(42,dx*100)))+'%';d.style.top=(50-Math.max(-42,Math.min(42,dz*100)))+'%';radar.appendChild(d)}
 }
 let toastTimer;function toast(t){$('toast').textContent=t;$('toast').style.opacity='1';clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').style.opacity='0',1350)}
-function animate(){
- requestAnimationFrame(animate);if(!renderer)return;const dt=Math.min(clock.getDelta(),.033);
+function animate(now){
+ requestAnimationFrame(animate);if(!renderer)return;now=now||performance.now();if(now-lastFrameTime<16.4)return;lastFrameTime=now;const dt=Math.min(clock.getDelta(),.033);
  if(active&&!paused&&controls.isLocked){
   if(droneMode)updateDrone(dt);else{updateMovement(dt);enemyThink(dt);allyThink(dt)}updateEnemyDeaths(dt);updateParticles(dt);fogVolumes.forEach(o=>{if(o.material.uniforms&&o.material.uniforms.uTime)o.material.uniforms.uTime.value=performance.now()*.001});if(uavTimer>0){uavTimer-=dt;if(uavTimer<=0)$('radar').style.boxShadow='inset 0 0 20px #53b6dc17'}
   if(player.damageCooldown>0)player.damageCooldown-=dt;
