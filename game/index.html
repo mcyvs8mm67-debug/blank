@@ -249,7 +249,7 @@ function enemyThink(dt){
 }
 function updateParticles(dt){for(let i=particles.length-1;i>=0;i--){const p=particles[i];p.life-=dt;p.vel.y-=9.8*dt;p.mesh.position.addScaledVector(p.vel,dt);p.mesh.rotation.x+=dt*8;if(p.life<=0){scene.remove(p.mesh);particles.splice(i,1)}}for(let i=tracers.length-1;i>=0;i--){tracers[i].life-=dt;if(tracers[i].life<=0){scene.remove(tracers[i].line);tracers.splice(i,1)}}}
 function updateMovement(dt){
- const obj=controls.getObject(),speed=keys.ShiftLeft?9.3:keys.ControlLeft?3.2:5.8;const forward=new THREE.Vector3();camera.getWorldDirection(forward);forward.y=0;forward.normalize();const right=new THREE.Vector3().crossVectors(forward,new THREE.Vector3(0,1,0)).negate();
+ const obj=controls.getObject(),speed=keys.ShiftLeft?9.3:keys.ControlLeft?3.2:5.8;const forward=new THREE.Vector3();camera.getWorldDirection(forward);forward.y=0;forward.normalize();const right=new THREE.Vector3().crossVectors(forward,new THREE.Vector3(0,1,0));
  const dir=new THREE.Vector3();if(keys.KeyW)dir.add(forward);if(keys.KeyS)dir.sub(forward);if(keys.KeyD)dir.add(right);if(keys.KeyA)dir.sub(right);if(dir.lengthSq()>0)dir.normalize();
  const sliding=keys.ControlLeft&&keys.ShiftLeft&&player.onGround;let actual=speed;if(sliding){actual=12;player.sliding=.45}if(player.sliding>0)player.sliding-=dt;
  const accel=player.onGround?13:3;player.velocity.x=THREE.MathUtils.damp(player.velocity.x,dir.x*actual,accel,dt);player.velocity.z=THREE.MathUtils.damp(player.velocity.z,dir.z*actual,accel,dt);
@@ -286,7 +286,7 @@ function animate(){
 }
 function startGame(){
  audioInit();if(audio.ctx?.state==='suspended')audio.ctx.resume();quality=Number($('qualitySelect').value);renderer.setPixelRatio(Math.min(devicePixelRatio,quality===0?1:quality===1?1.4:1.8));renderer.shadowMap.enabled=quality>0;
- mode=$('modeSelect').value;buildMap($('mapSelect').value);player={health:100,score:0,kills:0,wave:1,streak:0,velocity:new THREE.Vector3(),onGround:true,crouch:false,sliding:0,bob:0,damageCooldown:0};weapons.forEach(w=>{w.mag=w.cap;w.reserve=w.name.includes('VX')?150:w.name.includes('M90')?35:90});weaponIndex=0;buildGun();spawnEnemies(mode==='survival'?6:9);spawnClock=0;updateHUD();
+ mode=$('modeSelect').value;buildMap($('mapSelect').value);controls.getObject().position.set(0,1.75,-42);player={health:100,score:0,kills:0,wave:1,streak:0,velocity:new THREE.Vector3(),onGround:true,crouch:false,sliding:0,bob:0,damageCooldown:0};weapons.forEach(w=>{w.mag=w.cap;w.reserve=w.name.includes('VX')?150:w.name.includes('M90')?35:90});weaponIndex=0;buildGun();spawnEnemies(mode==='survival'?6:9);spawnClock=0;updateHUD();
  const names={dock:['OPERATION IRON TIDE','SECTOR 04 // CARGO DOCKYARD'],snow:['OPERATION WHITEOUT','SECTOR 09 // MOUNTAIN OUTPOST'],neon:['OPERATION NIGHTFALL','SECTOR 12 // ROOFTOP COMPLEX']};$('mission').firstChild.textContent=names[mapId][0];$('missionSub').textContent=names[mapId][1];
  $('menu').style.display='none';$('pause').style.display='none';$('gameover').style.display='none';$('hud').style.display='block';active=true;paused=false;controls.lock();toast('DEPLOYMENT CONFIRMED');
 }
